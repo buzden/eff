@@ -20,25 +20,25 @@ object ValidateEffect extends ValidateEffect
 sealed trait Validate[+E, A]
 case class Correct[E]() extends Validate[E, Unit]
 case class Warning[E](e: E) extends Validate[E, Unit]
-case class Wrong[E](e: E) extends Validate[E, Unit]
+case class Wrong[E, A](e: E) extends Validate[E, A]
 
 trait ValidateCreation {
 
   /** create an Validate effect from a single Option value */
-  def validateOption[R, E, A](option: Option[A], e: => E)(implicit m: Validate[E, ?] |= R): Eff[R, Unit] =
-    option.map(_ => correct(())).getOrElse(wrong(e))
+  def validateOption[R, E, A](option: Option[A], e: => E)(implicit m: Validate[E, ?] |= R): Eff[R, A] =
+    option.map(correct(_)).getOrElse(wrong(e))
 
   /** create an Validate effect from a single Either value */
-  def validateEither[R, E, A](either: E Either A)(implicit m: Validate[E, ?] |= R): Eff[R, Unit] =
-    either.fold(e => wrong(e), _ => correct(()))
+  def validateEither[R, E, A](either: E Either A)(implicit m: Validate[E, ?] |= R): Eff[R, A] =
+    either.fold(wrong(_), correct(_))
 
   /** create an Validate effect from a single Ior value */
-  def validateIor[R, E, A](ior: E Ior A)(implicit m: Validate[E, ?] |= R): Eff[R, Unit] =
-    ior.fold(e => wrong(e), _ => correct(()), (w, _) => warning(w))
+  def validateIor[R, E, A](ior: E Ior A)(implicit m: Validate[E, ?] |= R): Eff[R, A] =
+    ior.fold(wrong(_), correct(_), (w, a) => warning(a, w))
 
   /** create a failed value */
-  def wrong[R, E](e: E)(implicit m: Validate[E, ?] |= R): Eff[R, Unit] =
-    send[Validate[E, ?], R, Unit](Wrong(e))
+  def wrong[R, E, A](e: E)(implicit m: Validate[E, ?] |= R): Eff[R, A] =
+    send[Validate[E, ?], R, A](Wrong(e))
 
   /** create a correct value */
   def correct[R, E, A](a: A)(implicit m: Validate[E, ?] |= R): Eff[R, A] =
@@ -58,7 +58,7 @@ trait ValidateCreation {
 
   /** check a correct value */
   def validateValue[R, E, A](condition: Boolean, a: => A, e: => E)(implicit m: Validate[E, ?] |= R): Eff[R, A] =
-    if (condition) correct(a) else wrong(e) >> Eff.EffMonad[R].pure(a)
+    if (condition) correct(a) else wrong(e)
 }
 
 object ValidateCreation extends ValidateCreation
