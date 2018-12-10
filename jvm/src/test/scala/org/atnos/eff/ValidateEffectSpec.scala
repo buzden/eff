@@ -15,6 +15,7 @@ class ValidateEffectSpec extends Specification with ScalaCheck { def is = s2"""
  recover from wrong values and tell errors   $catchWrongValues2
 
  trivial catch preserves list of values      $idCatchPreserves
+ catch should not change count of elements   $catchShouldNotChangeCount
 
  run is stack safe with Validate  $stacksafeRun
 
@@ -90,6 +91,23 @@ class ValidateEffectSpec extends Specification with ScalaCheck { def is = s2"""
       val rethrown = v[S2](l).catchWrong { e: String => idCatch[String, Int, S2](e) }
 
       rethrown.runList.runNel.run === original.runList.runNel.run
+    }
+  }
+
+  def catchShouldNotChangeCount = {
+    type ValidateInt[A] = Validate[Int, A]
+    type S2 = Fx.fx2[ValidateInt, List]
+    type _validateInt[R] = ValidateInt |= R
+
+    def v[R: _validateInt:_list](xs: List[Int]): Eff[R, Int] = for {
+      x <- fromList(xs)
+      _ <- wrong(x + 100)
+      _ <- wrong(x + 101)
+    } yield x
+
+    prop { l: List[Int] =>
+      val eith = v[S2](l).catchWrong{ e: Int => correct(e) }.runList.runNel.run
+      eith.map(_.size) === Right(l.size)
     }
   }
 
