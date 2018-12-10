@@ -1,5 +1,6 @@
 package org.atnos.eff
 
+import cats.Monoid
 import cats.data._
 import cats.implicits._
 import org.atnos.eff.all._
@@ -12,6 +13,8 @@ class ValidateEffectSpec extends Specification with ScalaCheck { def is = s2"""
  run the validate effect with nothing        $validateKo
  recover from wrong values                   $catchWrongValues1
  recover from wrong values and tell errors   $catchWrongValues2
+
+ trivial catch preserves list of values      $idCatchPreserves
 
  run is stack safe with Validate  $stacksafeRun
 
@@ -67,6 +70,27 @@ class ValidateEffectSpec extends Specification with ScalaCheck { def is = s2"""
     val comp2: Check[Int] = comp1
 
     comp2.runNel.runWriter.run ==== ((Right(0), List("1", "2")))
+  }
+
+  def idCatchPreserves = {
+    type S2 = Fx.fx2[ValidateString, List]
+    type _validateString[R] = ValidateString |= R
+
+    def v[R: _validateString:_list](xs: List[Int]): Eff[R, Int] = for {
+      x <- fromList(xs)
+      y <- validateValue[R, String, Int](x > 0, x + 1, s"$x is too small")
+      _ <- validateValue[R, String, Int](x % 2 === 0, x + 1, s"$x is too odd")
+    } yield y
+
+    /** Just rethrows an error. Monoid is needed only for the pseudo-coercion. */
+    def idCatch[E, A: Monoid, R: Validate[E, ?] |= ?](e: E): Eff[R, A] = wrong(e) >> Eff.pure(Monoid[A].empty)
+
+    prop { l: List[Int] =>
+      val original = v[S2](l)
+      val rethrown = v[S2](l).catchWrong { e: String => idCatch[String, Int, S2](e) }
+
+      rethrown.runList.runNel.run === original.runList.runNel.run
+    }
   }
 
   type ValidateString[A] = Validate[String, A]
