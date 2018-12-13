@@ -22,6 +22,8 @@ trait validate {
     def catchWrong[E](handle: E => Eff[R, A])(implicit m: Member[Validate[E, ?], R]): Eff[R, A] =
       ValidateInterpretation.catchWrong(e)(handle)
 
+    def catchAllWrong[E](handle: NonEmptyList[E] => Eff[R, A])(implicit m: Member[Validate[E, ?], R]): Eff[R, A] =
+      ValidateInterpretation.catchAllWrong(e)(handle)
   }
 
 }

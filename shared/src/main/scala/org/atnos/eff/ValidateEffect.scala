@@ -2,7 +2,7 @@ package org.atnos.eff
 
 import cats._, data._
 import cats.implicits._
-import org.atnos.eff.all._
+import org.atnos.eff.all._, syntax.all._
 import Interpret._
 
 /**
@@ -113,6 +113,12 @@ trait ValidateInterpretation extends ValidateCreation {
       }
 
     })
+
+  def catchAllWrong[R, E, A](effect: Eff[R, A])(handle: NonEmptyList[E] => Eff[R, A])(implicit member: Validate[E, ?] <= R): Eff[R, A] =
+    runNel(effect)(member.aux).into[R](IntoPoly.intoMember(member.aux)).flatMap {
+      case Right(a) => Eff.pure(a)
+      case Left(errs) => handle(errs)
+    }
 }
 
 object ValidateInterpretation extends ValidateInterpretation
