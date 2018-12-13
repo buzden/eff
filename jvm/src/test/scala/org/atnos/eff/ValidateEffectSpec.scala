@@ -84,11 +84,12 @@ class ValidateEffectSpec extends Specification with ScalaCheck { def is = s2"""
     } yield y
 
     /** Just rethrows an error. Monoid is needed only for the pseudo-coercion. */
-    def idCatch[E, A: Monoid, R: Validate[E, ?] |= ?](e: E): Eff[R, A] = wrong(e) >> Eff.pure(Monoid[A].empty)
+    def idCatch[E, A: Monoid, R: Validate[E, ?] |= ?](es: NonEmptyList[E]): Eff[R, A] =
+      es.map(wrong(_)).reduceLeft(_ >> _) >> Eff.pure(Monoid[A].empty)
 
     prop { l: List[Int] =>
       val original = v[S2](l)
-      val rethrown = v[S2](l).catchWrong { e: String => idCatch[String, Int, S2](e) }
+      val rethrown = v[S2](l).catchAllWrong { e: NonEmptyList[String] => idCatch[String, Int, S2](e) }
 
       rethrown.runList.runNel.run === original.runList.runNel.run
     }
