@@ -91,7 +91,7 @@ class ValidateEffectSpec extends Specification with ScalaCheck { def is = s2"""
       val original = v[S2](l)
       val rethrown = v[S2](l).catchAllWrong { e: NonEmptyList[String] => idCatch[String, Int, S2](e) }
 
-      rethrown.runList.runNel.run === original.runList.runNel.run
+      rethrown.runList.runNel.run ==== original.runList.runNel.run
     }
   }
 
