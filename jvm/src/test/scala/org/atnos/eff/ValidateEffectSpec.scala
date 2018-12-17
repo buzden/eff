@@ -16,6 +16,8 @@ class ValidateEffectSpec extends Specification with ScalaCheck { def is = s2"""
  run the validate effect with warn & err     $validateWarnAndErr
  run the validate effect with errs & warn    $validateWarnAndErr
 
+ validate read from Either                   $validateReadEither
+
  recover from wrong values                   $catchWrongValues1
  recover from wrong values and tell errors   $catchWrongValues2
 
@@ -84,6 +86,16 @@ class ValidateEffectSpec extends Specification with ScalaCheck { def is = s2"""
       } yield a + b
 
     validate.runIorNel.run ==== Ior.Right(3)
+  }
+
+  def validateReadEither = {
+    def eitherToEff(e: String Either Int): Eff[S, Int] = for {
+      num <- validateEither(e)
+    } yield num.abs
+
+    prop { e: String Either Int =>
+      eitherToEff(e).runNel.run ==== e.map(_.abs).leftMap(NonEmptyList.one)
+    }
   }
 
   def catchWrongValues1 = {
