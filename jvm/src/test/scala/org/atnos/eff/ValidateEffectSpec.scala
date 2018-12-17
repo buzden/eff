@@ -91,11 +91,12 @@ class ValidateEffectSpec extends Specification with ScalaCheck { def is = s2"""
 
   def validateReadEither = {
     def eitherToEff(e: String Either Int): Eff[S, Int] = for {
-      num <- validateEither(e)
-    } yield num.abs
+      n1 <- validateEither(e)
+      n2 <- validateEither(e)
+    } yield n1 + n2
 
     prop { e: String Either Int =>
-      eitherToEff(e).runNel.run ==== e.map(_.abs).leftMap(NonEmptyList.one)
+      eitherToEff(e).runNel.run ==== e.map(_ * 2).leftMap(x => NonEmptyList.of(x, x))
     }
   }
 
