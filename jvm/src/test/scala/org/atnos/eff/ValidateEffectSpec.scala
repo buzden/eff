@@ -17,6 +17,7 @@ class ValidateEffectSpec extends Specification with ScalaCheck { def is = s2"""
  run the validate effect with errs & warn    $validateWarnAndErr
 
  validate read from Either                   $validateReadEither
+ validate read from Ior                      $validateReadIor
 
  recover from wrong values                   $catchWrongValues1
  recover from wrong values and tell errors   $catchWrongValues2
@@ -95,6 +96,27 @@ class ValidateEffectSpec extends Specification with ScalaCheck { def is = s2"""
 
     prop { e: String Either Int =>
       eitherToEff(e).runNel.run ==== e.map(_.abs).leftMap(NonEmptyList.one)
+    }
+  }
+
+  def validateReadIor = {
+    def iorToEff(e: String Ior Int): Eff[S, Int] = for {
+      num <- validateIor(e)
+    } yield num.abs
+
+    import org.scalacheck.{Arbitrary, Gen}
+    implicit def arbIor[T, U](implicit at: Arbitrary[T], au: Arbitrary[U]): Arbitrary[T Ior U] =
+      Arbitrary(Gen.oneOf(
+        at.arbitrary.map(Ior.Left(_)),
+        for {
+          t <- at.arbitrary
+          u <- au.arbitrary
+        } yield Ior.Both(t, u),
+        au.arbitrary.map(Ior.Right(_))
+      ))
+
+    prop { e: String Ior Int =>
+      iorToEff(e).runIorNel.run ==== e.map(_.abs).leftMap(NonEmptyList.one)
     }
   }
 
