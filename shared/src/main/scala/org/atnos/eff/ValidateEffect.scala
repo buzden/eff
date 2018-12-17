@@ -26,18 +26,22 @@ trait ValidateCreation {
 
   /** create an Validate effect from a single Option value */
   def validateOption[R, E, A](option: Option[A], e: => E)(implicit m: Validate[E, ?] |= R): Eff[R, A] =
-    option.map(correct(_)).getOrElse(wrong(e))
+    option.map(correct(_)).getOrElse(wrongGen(e))
 
   /** create an Validate effect from a single Either value */
   def validateEither[R, E, A](either: E Either A)(implicit m: Validate[E, ?] |= R): Eff[R, A] =
-    either.fold(wrong(_), correct(_))
+    either.fold(wrongGen(_), correct(_))
 
   /** create an Validate effect from a single Ior value */
   def validateIor[R, E, A](ior: E Ior A)(implicit m: Validate[E, ?] |= R): Eff[R, A] =
-    ior.fold(wrong(_), correct(_), (w, a) => warning(a, w))
+    ior.fold(wrongGen(_), correct(_), (w, a) => warning(a, w))
 
   /** create a failed value */
-  def wrong[R, E, A](e: E)(implicit m: Validate[E, ?] |= R): Eff[R, A] =
+  def wrong[R, E](e: E)(implicit m: Validate[E, ?] |= R): Eff[R, Unit] =
+    wrongGen(e)
+
+  /** create a failed value (with arbitrary return type) */
+  def wrongGen[R, E, A](e: E)(implicit m: Validate[E, ?] |= R): Eff[R, A] =
     send[Validate[E, ?], R, A](Wrong(e))
 
   /** create a correct value */
@@ -58,7 +62,7 @@ trait ValidateCreation {
 
   /** check a correct value */
   def validateValue[R, E, A](condition: Boolean, a: => A, e: => E)(implicit m: Validate[E, ?] |= R): Eff[R, A] =
-    if (condition) correct(a) else wrong(e)
+    if (condition) correct(a) else wrongGen(e)
 }
 
 object ValidateCreation extends ValidateCreation
